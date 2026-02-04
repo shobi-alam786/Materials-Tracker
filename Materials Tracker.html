@@ -1,0 +1,781 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CFW Material Tracker</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script src="https://unpkg.com/html5-qrcode"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #f5f5f5;
+            padding-bottom: 70px;
+        }
+        .top-bar {
+            background: #2196F3;
+            color: white;
+            padding: 15px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+        .top-bar h1 { font-size: 1.2em; font-weight: 600; }
+        .menu-icon { font-size: 1.5em; cursor: pointer; }
+        .container { padding: 15px; max-width: 600px; margin: 0 auto; }
+        .screen { display: none; }
+        .screen.active { display: block; }
+        .card {
+            background: white;
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 15px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+        }
+        .form-group { margin-bottom: 15px; }
+        .form-group label {
+            display: block;
+            font-size: 0.85em;
+            color: #666;
+            margin-bottom: 5px;
+            font-weight: 500;
+        }
+        .form-group input {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            font-size: 1em;
+            background: #f9f9f9;
+        }
+        .form-group input:focus {
+            outline: none;
+            border-color: #2196F3;
+            background: white;
+        }
+        .btn {
+            width: 100%;
+            padding: 14px;
+            border: none;
+            border-radius: 8px;
+            font-size: 1em;
+            font-weight: 600;
+            cursor: pointer;
+            margin-top: 10px;
+        }
+        .btn-primary { background: #2196F3; color: white; }
+        .btn-primary:active { background: #1976D2; }
+        .btn-scan {
+            background: #4CAF50;
+            color: white;
+            padding: 12px;
+            border: none;
+            border-radius: 8px;
+            font-size: 1em;
+            font-weight: 600;
+            cursor: pointer;
+            width: 100%;
+            margin-bottom: 10px;
+        }
+        .btn-sync {
+            background: #9C27B0;
+            color: white;
+            padding: 10px 15px;
+            border: none;
+            border-radius: 8px;
+            font-size: 0.9em;
+            font-weight: 600;
+            cursor: pointer;
+            margin-left: 10px;
+        }
+        .sync-status {
+            display: inline-block;
+            padding: 5px 10px;
+            border-radius: 12px;
+            font-size: 0.75em;
+            font-weight: 600;
+            margin-left: 10px;
+        }
+        .sync-success { background: #E8F5E9; color: #2E7D32; }
+        .sync-pending { background: #FFF3E0; color: #F57C00; }
+        .sync-error { background: #FFEBEE; color: #C62828; }
+        .material-selector {
+            background: #f9f9f9;
+            border-radius: 8px;
+            padding: 15px;
+            margin-top: 10px;
+        }
+        .material-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 8px;
+            margin-bottom: 10px;
+        }
+        .material-checkbox {
+            display: flex;
+            align-items: center;
+            padding: 10px;
+            background: white;
+            border-radius: 6px;
+            cursor: pointer;
+        }
+        .material-checkbox input { width: auto; margin-right: 8px; }
+        .material-checkbox label { margin: 0; cursor: pointer; font-size: 0.9em; }
+        .selected-materials {
+            background: #E3F2FD;
+            border-radius: 8px;
+            padding: 10px;
+            margin-top: 10px;
+        }
+        .material-chip {
+            display: inline-block;
+            background: #2196F3;
+            color: white;
+            padding: 6px 12px;
+            border-radius: 16px;
+            margin: 4px;
+            font-size: 0.85em;
+        }
+        .entry-card {
+            background: white;
+            border-radius: 12px;
+            padding: 15px;
+            margin-bottom: 12px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+        }
+        .entry-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 12px;
+            padding-bottom: 12px;
+            border-bottom: 1px solid #f0f0f0;
+        }
+        .entry-title { font-weight: 600; font-size: 1.1em; color: #333; }
+        .entry-date { font-size: 0.85em; color: #999; }
+        .entry-info {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin-bottom: 12px;
+        }
+        .info-item { font-size: 0.9em; }
+        .info-label { color: #666; font-size: 0.8em; display: block; }
+        .info-value { color: #333; font-weight: 500; display: block; margin-top: 2px; }
+        .materials-section {
+            background: #f8f8f8;
+            border-radius: 8px;
+            padding: 10px;
+            margin-bottom: 10px;
+        }
+        .material-summary {
+            background: white;
+            padding: 10px;
+            border-radius: 6px;
+            margin-bottom: 8px;
+        }
+        .material-name { font-weight: 600; color: #333; margin-bottom: 8px; }
+        .progress-bar-container {
+            background: #e0e0e0;
+            height: 8px;
+            border-radius: 4px;
+            overflow: hidden;
+            margin-top: 8px;
+        }
+        .progress-bar { background: #4CAF50; height: 100%; transition: width 0.3s; }
+        .progress-bar.pending { background: #FF9800; }
+        .quantity-display {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 8px;
+            font-size: 0.9em;
+        }
+        .qty-item { text-align: center; }
+        .qty-label { color: #666; font-size: 0.75em; display: block; }
+        .qty-value {
+            font-weight: 600;
+            font-size: 1.2em;
+            display: block;
+            margin-top: 2px;
+        }
+        .qty-value.total { color: #2196F3; }
+        .qty-value.dispatched { color: #4CAF50; }
+        .qty-value.remaining { color: #FF9800; }
+        .trips-section {
+            background: #f8f8f8;
+            border-radius: 8px;
+            padding: 10px;
+            margin-top: 10px;
+        }
+        .trip-item {
+            background: white;
+            padding: 10px;
+            border-radius: 6px;
+            margin-bottom: 8px;
+        }
+        .trip-header {
+            font-weight: 600;
+            color: #666;
+            font-size: 0.85em;
+            margin-bottom: 8px;
+        }
+        .worker-trip {
+            padding: 8px;
+            background: #f9f9f9;
+            border-radius: 4px;
+            margin-bottom: 6px;
+        }
+        .worker-trip-name { font-weight: 600; color: #333; }
+        .worker-trip-fcn { font-size: 0.85em; color: #666; }
+        .worker-materials {
+            margin-top: 6px;
+            padding-top: 6px;
+            border-top: 1px solid #e0e0e0;
+        }
+        .material-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 3px 0;
+            font-size: 0.9em;
+        }
+        .action-buttons { display: flex; gap: 8px; margin-top: 12px; }
+        .btn-small {
+            flex: 1;
+            padding: 10px;
+            border: none;
+            border-radius: 8px;
+            font-size: 0.9em;
+            font-weight: 600;
+            cursor: pointer;
+        }
+        .btn-dispatch { background: #FF9800; color: white; }
+        .btn-delete { background: #f44336; color: white; }
+        .btn-complete { background: #4CAF50; color: white; }
+        .status-badge {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 0.75em;
+            font-weight: 600;
+        }
+        .status-pending { background: #FFF3E0; color: #F57C00; }
+        .status-completed { background: #E8F5E9; color: #2E7D32; }
+        .bottom-nav {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: white;
+            display: flex;
+            justify-content: space-around;
+            padding: 10px 0;
+            box-shadow: 0 -2px 10px rgba(0,0,0,0.1);
+            z-index: 100;
+        }
+        .nav-item {
+            flex: 1;
+            text-align: center;
+            padding: 8px;
+            cursor: pointer;
+            color: #999;
+            transition: color 0.2s;
+        }
+        .nav-item.active { color: #2196F3; }
+        .nav-icon { font-size: 1.5em; display: block; margin-bottom: 4px; }
+        .nav-label { font-size: 0.7em; font-weight: 500; }
+        .empty-state { text-align: center; padding: 60px 20px; color: #999; }
+        .empty-icon { font-size: 4em; margin-bottom: 15px; }
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 12px;
+            margin-bottom: 20px;
+        }
+        .stat-card {
+            background: white;
+            border-radius: 12px;
+            padding: 20px;
+            text-align: center;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+        }
+        .stat-value { font-size: 2em; font-weight: 700; color: #2196F3; }
+        .stat-label { font-size: 0.85em; color: #666; margin-top: 5px; }
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.5);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+            overflow-y: auto;
+        }
+        .modal.active { display: flex; }
+        .modal-content {
+            background: white;
+            border-radius: 12px;
+            padding: 20px;
+            width: 90%;
+            max-width: 500px;
+            max-height: 85vh;
+            overflow-y: auto;
+        }
+        .modal-header { font-size: 1.2em; font-weight: 600; margin-bottom: 15px; }
+        .add-more-btn {
+            background: #4CAF50;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 600;
+            margin-top: 10px;
+            width: 100%;
+        }
+        .custom-material-input { display: flex; gap: 8px; margin-top: 10px; }
+        .custom-material-input input { flex: 1; }
+        .custom-material-input button {
+            background: #2196F3;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 6px;
+            cursor: pointer;
+        }
+        .worker-dispatch-form {
+            background: #f8f8f8;
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 15px;
+        }
+        .worker-dispatch-header {
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 10px;
+            padding-bottom: 8px;
+            border-bottom: 2px solid #FF9800;
+        }
+        .material-input-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin-bottom: 8px;
+        }
+        #qr-reader {
+            width: 100%;
+            max-width: 400px;
+            margin: 0 auto 15px;
+        }
+        .qr-scanner-active {
+            background: #E8F5E9;
+            border: 2px solid #4CAF50;
+            border-radius: 8px;
+            padding: 10px;
+        }
+        .settings-section {
+            background: #f9f9f9;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 15px;
+        }
+        .settings-title {
+            font-weight: 600;
+            margin-bottom: 10px;
+            color: #333;
+        }
+    </style>
+</head>
+<body>
+    <div class="top-bar">
+        <div class="menu-icon" onclick="openSettings()">⚙️</div>
+        <h1>Material Tracker</h1>
+        <div style="display: flex; align-items: center;">
+            <span id="syncStatus" class="sync-status sync-pending" style="display: none;">●</span>
+            <div class="menu-icon" onclick="syncToKobo()">🔄</div>
+            <div class="menu-icon" onclick="exportToExcel()">⬇️</div>
+        </div>
+    </div>
+
+    <div id="registerScreen" class="screen active">
+        <div class="container">
+            <div class="card">
+                <h2 style="margin-bottom: 20px; color: #333;">Register Materials</h2>
+                <div class="form-group"><label>Date</label><input type="date" id="date"></div>
+                <div class="form-group"><label>SL No.</label><input type="number" id="sl" placeholder="Serial Number"></div>
+                <div class="form-group"><label>TM Name</label><input type="text" id="tm" placeholder="Enter TM name"></div>
+                <div class="form-group"><label>DRR-CODE</label><input type="text" id="drrCode" placeholder="Enter DRR code"></div>
+                <div class="form-group"><label>MRF</label><input type="text" id="mrf" placeholder="Enter MRF"></div>
+                <div class="form-group">
+                    <label>Select Materials</label>
+                    <div class="material-selector">
+                        <div class="material-grid" id="materialGrid"></div>
+                        <div class="custom-material-input">
+                            <input type="text" id="customMaterial" placeholder="Add custom material">
+                            <button onclick="addCustomMaterial()">Add</button>
+                        </div>
+                    </div>
+                    <div id="selectedMaterialsDisplay" class="selected-materials" style="display: none;"></div>
+                </div>
+                <button class="btn btn-primary" onclick="showMaterialQuantityForm()">Next: Set Quantities</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="listScreen" class="screen">
+        <div class="container"><div id="entriesList"></div></div>
+    </div>
+
+    <div id="dashboardScreen" class="screen">
+        <div class="container">
+            <div class="stats-grid">
+                <div class="stat-card"><div class="stat-value" id="totalEntries">0</div><div class="stat-label">Total Registrations</div></div>
+                <div class="stat-card"><div class="stat-value" id="pendingEntries">0</div><div class="stat-label">Pending Dispatch</div></div>
+                <div class="stat-card"><div class="stat-value" id="completedEntries">0</div><div class="stat-label">Completed</div></div>
+                <div class="stat-card"><div class="stat-value" id="totalWorkers">0</div><div class="stat-label">Total Workers</div></div>
+            </div>
+            <div class="card"><h3 style="margin-bottom: 15px;">Recent Activity</h3><div id="recentActivity"></div></div>
+        </div>
+    </div>
+
+    <!-- Settings Modal -->
+    <div id="settingsModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">KoBoToolbox Settings</div>
+            <div class="settings-section">
+                <div class="settings-title">API Configuration</div>
+                <div class="form-group">
+                    <label>KoBoToolbox Server URL</label>
+                    <input type="text" id="koboServer" placeholder="https://kf.kobotoolbox.org" value="https://kf.kobotoolbox.org">
+                </div>
+                <div class="form-group">
+                    <label>API Token</label>
+                    <input type="password" id="koboToken" placeholder="Enter your API token">
+                </div>
+                <div class="form-group">
+                    <label>Form/Asset UID</label>
+                    <input type="text" id="koboFormId" placeholder="e.g., aXXXXXXXXXXXXXXXXXXXXX">
+                </div>
+                <div style="font-size: 0.85em; color: #666; margin-top: 10px;">
+                    <strong>How to get your API Token:</strong><br>
+                    1. Go to your KoBoToolbox account<br>
+                    2. Click on your username → Account Settings<br>
+                    3. Find "API Token" section<br>
+                    4. Copy your token
+                </div>
+            </div>
+            <div style="display: flex; gap: 10px; margin-top: 20px;">
+                <button class="btn btn-primary" style="flex: 1;" onclick="saveKoboSettings()">Save Settings</button>
+                <button class="btn" style="flex: 1; background: #ccc;" onclick="closeSettings()">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="materialModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">Set Material Quantities</div>
+            <div id="materialQuantityForm"></div>
+            <div style="display: flex; gap: 10px; margin-top: 20px;">
+                <button class="btn btn-primary" style="flex: 1;" onclick="registerMaterials()">Register</button>
+                <button class="btn" style="flex: 1; background: #ccc;" onclick="closeMaterialModal()">Back</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="dispatchModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">Dispatch Materials to Workers</div>
+            <div id="dispatchFormContainer"></div>
+            <button class="add-more-btn" onclick="addAnotherWorkerDispatch()">+ Add Another Worker</button>
+            <div style="display: flex; gap: 10px; margin-top: 20px;">
+                <button class="btn btn-primary" style="flex: 1;" onclick="submitDispatch()">Dispatch</button>
+                <button class="btn" style="flex: 1; background: #ccc;" onclick="closeDispatchModal()">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="bottom-nav">
+        <div class="nav-item" onclick="switchScreen('dashboard')"><span class="nav-icon">📊</span><span class="nav-label">Dashboard</span></div>
+        <div class="nav-item active" onclick="switchScreen('register')"><span class="nav-icon">➕</span><span class="nav-label">Register</span></div>
+        <div class="nav-item" onclick="switchScreen('list')"><span class="nav-icon">📋</span><span class="nav-label">Materials</span></div>
+    </div>
+
+    <script>
+        const predefinedMaterials = ['Cement','Brick','Sand','Brick Chips','8mm Rober','10mm Rober','12mm Rober','16mm Rober','Borak Bamboo','Muli Bamboo','3mm Rope','6mm Rope','Geo Roll','Geo Bag','Jute Bag'];
+        let customMaterials=[],entries=[],entryId=0,selectedMaterials=[],currentEditId=null,tempDispatchWorkers=[];
+        let qrScanner = null;
+        let currentWorkerIndex = null;
+        
+        // KoBoToolbox settings
+        let koboSettings = {
+            server: localStorage.getItem('koboServer') || 'https://kf.kobotoolbox.org',
+            token: localStorage.getItem('koboToken') || '',
+            formId: localStorage.getItem('koboFormId') || ''
+        };
+        
+        // Load settings into form
+        function loadKoboSettings() {
+            document.getElementById('koboServer').value = koboSettings.server;
+            document.getElementById('koboToken').value = koboSettings.token;
+            document.getElementById('koboFormId').value = koboSettings.formId;
+        }
+        
+        function openSettings() {
+            loadKoboSettings();
+            document.getElementById('settingsModal').classList.add('active');
+        }
+        
+        function closeSettings() {
+            document.getElementById('settingsModal').classList.remove('active');
+        }
+        
+        function saveKoboSettings() {
+            koboSettings.server = document.getElementById('koboServer').value;
+            koboSettings.token = document.getElementById('koboToken').value;
+            koboSettings.formId = document.getElementById('koboFormId').value;
+            
+            localStorage.setItem('koboServer', koboSettings.server);
+            localStorage.setItem('koboToken', koboSettings.token);
+            localStorage.setItem('koboFormId', koboSettings.formId);
+            
+            closeSettings();
+            alert('Settings saved successfully!');
+        }
+        
+        // Sync to KoBoToolbox
+        async function syncToKobo() {
+            if (!koboSettings.token || !koboSettings.formId) {
+                alert('Please configure KoBoToolbox settings first (⚙️ icon)');
+                openSettings();
+                return;
+            }
+            
+            if (entries.length === 0) {
+                alert('No data to sync');
+                return;
+            }
+            
+            const syncStatus = document.getElementById('syncStatus');
+            syncStatus.style.display = 'inline-block';
+            syncStatus.className = 'sync-status sync-pending';
+            syncStatus.textContent = 'Syncing...';
+            
+            try {
+                // Submit each dispatch as a separate submission
+                let successCount = 0;
+                
+                for (let entry of entries) {
+                    for (let trip of entry.trips) {
+                        for (let worker of trip.workers) {
+                            for (let [material, quantity] of Object.entries(worker.materials)) {
+                                const submission = {
+                                    date: entry.date,
+                                    sl_number: entry.sl,
+                                    tm_name: entry.tm,
+                                    drr_code: entry.drrCode,
+                                    mrf: entry.mrf,
+                                    worker_name: worker.name,
+                                    fcn: worker.fcn,
+                                    material_name: material,
+                                    quantity: quantity,
+                                    trip_timestamp: trip.timestamp,
+                                    submission_time: new Date().toISOString()
+                                };
+                                
+                                const response = await fetch(`${koboSettings.server}/api/v2/assets/${koboSettings.formId}/data/`, {
+                                    method: 'POST',
+                                    headers: {
+                                        'Authorization': `Token ${koboSettings.token}`,
+                                        'Content-Type': 'application/json'
+                                    },
+                                    body: JSON.stringify(submission)
+                                });
+                                
+                                if (response.ok) {
+                                    successCount++;
+                                } else {
+                                    console.error('Failed to submit:', await response.text());
+                                }
+                            }
+                        }
+                    }
+                }
+                
+                syncStatus.className = 'sync-status sync-success';
+                syncStatus.textContent = `✓ Synced ${successCount}`;
+                setTimeout(() => {
+                    syncStatus.style.display = 'none';
+                }, 3000);
+                
+                alert(`Successfully synced ${successCount} records to KoBoToolbox!`);
+                
+            } catch (error) {
+                console.error('Sync error:', error);
+                syncStatus.className = 'sync-status sync-error';
+                syncStatus.textContent = '✗ Sync failed';
+                alert('Sync failed. Please check your settings and internet connection.');
+            }
+        }
+        
+        // Load from localStorage
+        function loadData() {
+            const savedEntries = localStorage.getItem('cfw_entries');
+            if (savedEntries) {
+                entries = JSON.parse(savedEntries);
+                entryId = entries.length > 0 ? Math.max(...entries.map(e => e.id)) + 1 : 0;
+            }
+        }
+        
+        // Save to localStorage
+        function saveData() {
+            localStorage.setItem('cfw_entries', JSON.stringify(entries));
+        }
+        
+        document.getElementById('date').valueAsDate = new Date();
+        renderMaterialGrid();
+        loadData();
+
+        function renderMaterialGrid(){const grid=document.getElementById('materialGrid'),allMaterials=[...predefinedMaterials,...customMaterials];grid.innerHTML=allMaterials.map(m=>`<div class="material-checkbox"><input type="checkbox" id="mat_${m.replace(/\s+/g,'_')}" value="${m}" onchange="updateSelectedMaterials()"><label for="mat_${m.replace(/\s+/g,'_')}">${m}</label></div>`).join('');}
+        
+        function addCustomMaterial(){const input=document.getElementById('customMaterial'),material=input.value.trim();if(!material){alert('Please enter a material name');return;}if([...predefinedMaterials,...customMaterials].includes(material)){alert('Material already exists');return;}customMaterials.push(material);renderMaterialGrid();input.value='';}
+        
+        function updateSelectedMaterials(){selectedMaterials=[];document.querySelectorAll('#materialGrid input[type="checkbox"]:checked').forEach(cb=>selectedMaterials.push(cb.value));const display=document.getElementById('selectedMaterialsDisplay');if(selectedMaterials.length>0){display.style.display='block';display.innerHTML='<strong>Selected:</strong><br>'+selectedMaterials.map(m=>`<span class="material-chip">${m}</span>`).join('');}else{display.style.display='none';}}
+        
+        function showMaterialQuantityForm(){const sl=document.getElementById('sl').value,tm=document.getElementById('tm').value,drrCode=document.getElementById('drrCode').value,mrf=document.getElementById('mrf').value;if(!sl||!tm||!drrCode||!mrf){alert('Please fill in all fields');return;}if(selectedMaterials.length===0){alert('Please select at least one material');return;}document.getElementById('materialQuantityForm').innerHTML=selectedMaterials.map(m=>`<div class="form-group"><label>${m} - Total Quantity</label><input type="number" id="qty_${m.replace(/\s+/g,'_')}" placeholder="Enter total quantity"></div>`).join('');document.getElementById('materialModal').classList.add('active');}
+        
+        function closeMaterialModal(){document.getElementById('materialModal').classList.remove('active');}
+        
+        function registerMaterials(){const materials=[];for(let m of selectedMaterials){const safeName=m.replace(/\s+/g,'_'),total=parseInt(document.getElementById(`qty_${safeName}`).value||0);if(total<=0){alert(`Please enter a valid quantity for ${m}`);return;}materials.push({name:m,totalQuantity:total,remainingQuantity:total,dispatchedQuantity:0});}entries.push({id:entryId++,date:document.getElementById('date').value,sl:document.getElementById('sl').value,tm:document.getElementById('tm').value,drrCode:document.getElementById('drrCode').value,mrf:document.getElementById('mrf').value,materials:materials,trips:[]});saveData();closeMaterialModal();clearForm();alert('Materials registered successfully!');switchScreen('list');}
+        
+        function clearForm(){document.getElementById('sl').value='';document.getElementById('tm').value='';document.getElementById('drrCode').value='';document.getElementById('mrf').value='';document.getElementById('date').valueAsDate=new Date();selectedMaterials=[];document.querySelectorAll('#materialGrid input[type="checkbox"]').forEach(cb=>cb.checked=false);updateSelectedMaterials();}
+        
+        function switchScreen(screen){document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));if(screen==='register'){document.getElementById('registerScreen').classList.add('active');document.querySelectorAll('.nav-item')[1].classList.add('active');}else if(screen==='list'){document.getElementById('listScreen').classList.add('active');document.querySelectorAll('.nav-item')[2].classList.add('active');renderList();}else if(screen==='dashboard'){document.getElementById('dashboardScreen').classList.add('active');document.querySelectorAll('.nav-item')[0].classList.add('active');renderDashboard();}}
+        
+        function renderList(){const listDiv=document.getElementById('entriesList');if(entries.length===0){listDiv.innerHTML='<div class="empty-state"><div class="empty-icon">📦</div><div>No materials registered yet</div><div style="font-size:0.9em;margin-top:10px;">Register materials using the + tab</div></div>';return;}listDiv.innerHTML=entries.map(e=>{const allCompleted=e.materials.every(m=>m.remainingQuantity===0),status=allCompleted?'completed':'pending';return`<div class="entry-card"><div class="entry-header"><div><div class="entry-title">DRR: ${e.drrCode}</div><div class="entry-date">${e.date}</div></div><span class="status-badge status-${status}">${status==='completed'?'✓ Completed':'⏳ Pending'}</span></div><div class="entry-info"><div class="info-item"><span class="info-label">MRF</span><span class="info-value">${e.mrf}</span></div><div class="info-item"><span class="info-label">TM</span><span class="info-value">${e.tm}</span></div></div><div class="materials-section"><div style="font-size:0.8em;color:#666;margin-bottom:8px;">Registered Materials:</div>${e.materials.map(m=>{const progress=m.totalQuantity>0?(m.dispatchedQuantity/m.totalQuantity)*100:0,matStatus=m.remainingQuantity===0?'completed':'pending';return`<div class="material-summary"><div class="material-name">${m.name}</div><div class="quantity-display"><div class="qty-item"><span class="qty-label">Total</span><span class="qty-value total">${m.totalQuantity}</span></div><div class="qty-item"><span class="qty-label">Dispatched</span><span class="qty-value dispatched">${m.dispatchedQuantity}</span></div><div class="qty-item"><span class="qty-label">Remaining</span><span class="qty-value remaining">${m.remainingQuantity}</span></div></div><div class="progress-bar-container"><div class="progress-bar ${matStatus==='completed'?'':'pending'}" style="width:${progress}%"></div></div></div>`;}).join('')}</div>${e.trips.length>0?`<div class="trips-section"><div style="font-size:0.8em;color:#666;margin-bottom:8px;">Dispatch History:</div>${e.trips.map((t,idx)=>`<div class="trip-item"><div class="trip-header">Trip ${idx+1} - ${t.timestamp}</div>${t.workers.map(w=>`<div class="worker-trip"><div class="worker-trip-name">${w.name}</div><div class="worker-trip-fcn">FCN: ${w.fcn}</div><div class="worker-materials">${Object.entries(w.materials).map(([mat,qty])=>`<div class="material-row"><span>${mat}</span><span style="font-weight:600;color:#4CAF50;">${qty}</span></div>`).join('')}</div></div>`).join('')}</div>`).join('')}</div>`:''}<div class="action-buttons">${!allCompleted?`<button class="btn-small btn-dispatch" onclick="openDispatchModal(${e.id})">Dispatch</button>`:`<button class="btn-small btn-complete" disabled>✓ Complete</button>`}<button class="btn-small btn-delete" onclick="deleteEntry(${e.id})">Delete</button></div></div>`;}).join('');}
+        
+        function openDispatchModal(id){const entry=entries.find(e=>e.id===id);if(!entry)return;currentEditId=id;tempDispatchWorkers=[];addAnotherWorkerDispatch();document.getElementById('dispatchModal').classList.add('active');}
+        
+        function addAnotherWorkerDispatch(){const entry=entries.find(e=>e.id===currentEditId);if(!entry)return;tempDispatchWorkers.push({name:'',fcn:'',materials:{}});renderDispatchForm(entry);}
+        
+        function startQRScanner(workerIndex) {
+            currentWorkerIndex = workerIndex;
+            const formDiv = document.getElementById(`worker_form_${workerIndex}`);
+            
+            if (!document.getElementById('qr-reader')) {
+                const qrDiv = document.createElement('div');
+                qrDiv.id = 'qr-reader';
+                formDiv.insertBefore(qrDiv, formDiv.firstChild);
+            }
+            
+            formDiv.classList.add('qr-scanner-active');
+            
+            qrScanner = new Html5QrcodeScanner(
+                "qr-reader",
+                { 
+                    fps: 10, 
+                    qrbox: 250,
+                    aspectRatio: 1.0,
+                    videoConstraints: {
+                        facingMode: { exact: "environment" }
+                    }
+                },
+                false
+            );
+            
+            qrScanner.render(onQRScanSuccess, onQRScanError);
+        }
+        
+        function onQRScanSuccess(decodedText) {
+            let parts = decodedText.split(";");
+            
+            if (parts.length < 4) {
+                alert("Unsupported QR format");
+                return;
+            }
+            
+            let fcn = parts[2].trim();
+            let name = parts[3].trim();
+            
+            if (!/^\d{6}$/.test(fcn)) {
+                alert("Invalid FCN found in QR");
+                return;
+            }
+            
+            document.getElementById(`dispatch_name_${currentWorkerIndex}`).value = name;
+            document.getElementById(`dispatch_fcn_${currentWorkerIndex}`).value = fcn;
+            
+            stopQRScanner();
+        }
+        
+        function onQRScanError(error) {}
+        
+        function stopQRScanner() {
+            if (qrScanner) {
+                qrScanner.clear();
+                qrScanner = null;
+                
+                const qrReaderDiv = document.getElementById('qr-reader');
+                if (qrReaderDiv) {
+                    qrReaderDiv.remove();
+                }
+                
+                if (currentWorkerIndex !== null) {
+                    const formDiv = document.getElementById(`worker_form_${currentWorkerIndex}`);
+                    if (formDiv) {
+                        formDiv.classList.remove('qr-scanner-active');
+                    }
+                }
+                
+                currentWorkerIndex = null;
+            }
+        }
+        
+        function renderDispatchForm(entry){
+            const container=document.getElementById('dispatchFormContainer');
+            const availableMaterials=entry.materials.filter(m=>m.remainingQuantity>0);
+            
+            container.innerHTML=tempDispatchWorkers.map((w,index)=>`
+                <div class="worker-dispatch-form" id="worker_form_${index}">
+                    <div class="worker-dispatch-header">Worker ${index+1}</div>
+                    <button class="btn-scan" type="button" onclick="startQRScanner(${index})">📷 Scan QR Code</button>
+                    <div class="form-group">
+                        <label>Worker Name</label>
+                        <input type="text" id="dispatch_name_${index}" placeholder="e.g. Rohim" value="${w.name}">
+                    </div>
+                    <div class="form-group">
+                        <label>FCN</label>
+                        <input type="text" id="dispatch_fcn_${index}" placeholder="6 digit FCN" value="${w.fcn}" maxlength="6">
+                    </div>
+                    <div style="font-size:0.9em;color:#666;margin-bottom:8px;font-weight:500;">Dispatch Quantities:</div>
+                    ${availableMaterials.map(m=>{
+                        const safeName=m.name.replace(/\s+/g,'_');
+                        return`<div class="material-input-row"><div style="display:flex;align-items:center;font-size:0.9em;">${m.name} (${m.remainingQuantity}):</div><input type="number" id="dispatch_${index}_${safeName}" placeholder="Qty" max="${m.remainingQuantity}" value="${w.materials[m.name]||''}" style="padding:8px;"></div>`;
+                    }).join('')}
+                </div>
+            `).join('');
+        }
+        
+        function closeDispatchModal(){
+            stopQRScanner();
+            document.getElementById('dispatchModal').classList.remove('active');
+            currentEditId=null;
+            tempDispatchWorkers=[];
+        }
+        
+        function submitDispatch(){const entry=entries.find(e=>e.id===currentEditId);if(!entry)return;const workers=[];for(let i=0;i<tempDispatchWorkers.length;i++){const name=document.getElementById(`dispatch_name_${i}`).value.trim(),fcn=document.getElementById(`dispatch_fcn_${i}`).value.trim();if(!name||!fcn){alert(`Please fill in name and FCN for Worker ${i+1}`);return;}if(!/^\d{6}$/.test(fcn)){alert(`FCN must be 6 digits for Worker ${i+1}`);return;}const workerMaterials={};let hasQuantity=false;for(let m of entry.materials.filter(m=>m.remainingQuantity>0)){const safeName=m.name.replace(/\s+/g,'_'),qty=parseInt(document.getElementById(`dispatch_${i}_${safeName}`).value||0);if(qty>0){if(qty>m.remainingQuantity){alert(`Quantity exceeds remaining for ${m.name}`);return;}workerMaterials[m.name]=qty;hasQuantity=true;}}if(!hasQuantity){alert(`Worker ${i+1} (${name}) has no quantities entered`);return;}workers.push({name:name,fcn:fcn,materials:workerMaterials});}workers.forEach(w=>{Object.entries(w.materials).forEach(([materialName,qty])=>{const m=entry.materials.find(m=>m.name===materialName);if(m){m.remainingQuantity-=qty;m.dispatchedQuantity+=qty;}});});entry.trips.push({timestamp:new Date().toLocaleString(),workers:workers});saveData();closeDispatchModal();renderList();alert('Materials dispatched successfully!');}
+        
+        function deleteEntry(id){if(confirm('Are you sure you want to delete this registration?')){entries=entries.filter(e=>e.id!==id);saveData();renderList();}}
+        
+        function renderDashboard(){const total=entries.length,pending=entries.filter(e=>e.materials.some(m=>m.remainingQuantity>0)).length,completed=entries.filter(e=>e.materials.every(m=>m.remainingQuantity===0)).length,workersSet=new Set();entries.forEach(e=>{e.trips.forEach(trip=>{trip.workers.forEach(w=>workersSet.add(w.name));});});document.getElementById('totalEntries').textContent=total;document.getElementById('pendingEntries').textContent=pending;document.getElementById('completedEntries').textContent=completed;document.getElementById('totalWorkers').textContent=workersSet.size;const recentDiv=document.getElementById('recentActivity'),recent=entries.slice(-5).reverse();if(recent.length===0){recentDiv.innerHTML='<div style="color:#999;text-align:center;padding:20px;">No activity yet</div>';}else{recentDiv.innerHTML=recent.map(e=>{const allCompleted=e.materials.every(m=>m.remainingQuantity===0);return`<div style="padding:10px 0;border-bottom:1px solid #f0f0f0;"><div style="font-weight:500;">${e.drrCode} - ${e.trips.length} trip(s)</div><div style="font-size:0.85em;color:#666;">${e.materials.length} material(s) - ${allCompleted?'Completed':'Pending'}</div></div>`;}).join('');}}
+        
+        function exportToExcel(){if(entries.length===0){alert('No data to export');return;}const exportData=[];entries.forEach(entry=>{entry.trips.forEach((trip,tripIdx)=>{trip.workers.forEach(worker=>{Object.entries(worker.materials).forEach(([material,quantity])=>{exportData.push({'Date':entry.date,'SL':entry.sl,'TM':entry.tm,'DRR-CODE':entry.drrCode,'MRF':entry.mrf,'Trip':tripIdx+1,'Worker Name':worker.name,'FCN':worker.fcn,'Material':material,'Quantity':quantity,'Trip Time':trip.timestamp});});});});});const ws=XLSX.utils.json_to_sheet(exportData),wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,'Dispatches');XLSX.writeFile(wb,`CFW_Dispatch_${new Date().toISOString().split('T')[0]}.xlsx`);}
+    </script>
+</body>
+</html>
